@@ -1,0 +1,24 @@
+package com.example.pastebin.model;
+
+public class Paste {
+    private String content;
+    private Long createdAt;
+    private Long expiresAt;
+    private Integer maxViews;
+    private int views;
+
+    public String getContent() { return content; }
+    public void setContent(String content) { this.content = content; }
+
+    public Long getCreatedAt() { return createdAt; }
+    public void setCreatedAt(Long createdAt) { this.createdAt = createdAt; }
+
+    public Long getExpiresAt() { return expiresAt; }
+    public void setExpiresAt(Long expiresAt) { this.expiresAt = expiresAt; }
+
+    public Integer getMaxViews() { return maxViews; }
+    public void setMaxViews(Integer maxViews) { this.maxViews = maxViews; }
+
+    public int getViews() { return views; }
+    public void setViews(int views) { this.views = views; }
+}
