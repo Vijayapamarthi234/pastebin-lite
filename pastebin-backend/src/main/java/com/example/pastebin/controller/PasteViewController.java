@@ -3,12 +3,12 @@ package com.example.pastebin.controller;
 import com.example.pastebin.store.PasteStore;
 import com.example.pastebin.util.TimeUtil;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
+@CrossOrigin
 public class PasteViewController {
 
     @GetMapping("/p/{id}")
@@ -27,15 +27,18 @@ public class PasteViewController {
         Integer maxViews = (Integer) paste.get("maxViews");
         Long expiresAt = (Long) paste.get("expiresAt");
 
+        // TTL check
         if (expiresAt != null && now >= expiresAt) {
             PasteStore.STORE.remove(id);
             return ResponseEntity.status(404).body("Expired");
         }
 
+        // View limit check
         if (maxViews != null && views >= maxViews) {
             return ResponseEntity.status(404).body("View limit exceeded");
         }
 
+        // Increment views
         paste.put("views", views + 1);
 
         String html = """
@@ -47,10 +50,10 @@ public class PasteViewController {
             """.formatted(
                 org.springframework.web.util.HtmlUtils.htmlEscape(
                         (String) paste.get("content"))
-            );
+        );
 
         return ResponseEntity.ok()
-                .header("Content-Type", "text/html")
+                .contentType(MediaType.TEXT_HTML)
                 .body(html);
     }
 }
