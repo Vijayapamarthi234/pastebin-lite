@@ -15,7 +15,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api")
-@CrossOrigin(origins = "http://localhost:5173")
+@CrossOrigin(origins = "*") // allow deployed frontend
 public class PasteController {
 
     // ==========================
@@ -26,14 +26,18 @@ public class PasteController {
             @RequestBody CreatePasteRequest req,
             HttpServletRequest request) {
 
+        // Validation
         if (req.content == null || req.content.trim().isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Invalid content"));
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", "Invalid content"));
         }
         if (req.ttl_seconds != null && req.ttl_seconds < 1) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Invalid ttl_seconds"));
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", "Invalid ttl_seconds"));
         }
         if (req.max_views != null && req.max_views < 1) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Invalid max_views"));
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", "Invalid max_views"));
         }
 
         String id = UUID.randomUUID().toString().substring(0, 8);
@@ -43,16 +47,21 @@ public class PasteController {
         paste.put("content", req.content);
         paste.put("views", 0);
         paste.put("maxViews", req.max_views);
-        paste.put("expiresAt",
+        paste.put(
+                "expiresAt",
                 req.ttl_seconds == null ? null : now + req.ttl_seconds * 1000L
         );
 
         PasteStore.STORE.put(id, paste);
 
+        // ✅ Build URL dynamically (LOCAL + PROD SAFE)
+        String baseUrl = request.getRequestURL().toString()
+                .replace(request.getRequestURI(), "");
+
         return ResponseEntity.ok(
                 new CreatePasteResponse(
                         id,
-                        "http://localhost:8082/p/" + id
+                        baseUrl + "/p/" + id
                 )
         );
     }
@@ -67,7 +76,8 @@ public class PasteController {
 
         Map<String, Object> paste = PasteStore.STORE.get(id);
         if (paste == null) {
-            return ResponseEntity.status(404).body(Map.of("error", "Not found"));
+            return ResponseEntity.status(404)
+                    .body(Map.of("error", "Not found"));
         }
 
         long now = TimeUtil.now(request);
@@ -78,26 +88,23 @@ public class PasteController {
 
         if (expiresAt != null && now >= expiresAt) {
             PasteStore.STORE.remove(id);
-            return ResponseEntity.status(404).body(Map.of("error", "Expired"));
+            return ResponseEntity.status(404)
+                    .body(Map.of("error", "Expired"));
         }
 
         if (maxViews != null && views >= maxViews) {
-            return ResponseEntity.status(404).body(Map.of("error", "View limit exceeded"));
+            return ResponseEntity.status(404)
+                    .body(Map.of("error", "View limit exceeded"));
         }
 
         paste.put("views", views + 1);
 
-        Map<String, Object> response = new HashMap<>();
-        response.put("content", paste.get("content"));
-        response.put(
+        return ResponseEntity.ok(Map.of(
+                "content", paste.get("content"),
                 "remaining_views",
-                maxViews == null ? null : Math.max(0, maxViews - (views + 1))
-        );
-        response.put(
+                maxViews == null ? null : Math.max(0, maxViews - (views + 1)),
                 "expires_at",
                 expiresAt == null ? null : Instant.ofEpochMilli(expiresAt)
-        );
-
-        return ResponseEntity.ok(response);
+        ));
     }
 }
