@@ -15,7 +15,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api")
-@CrossOrigin(origins = "*") // allow deployed frontend
+@CrossOrigin(origins = "*")
 public class PasteController {
 
     // ==========================
@@ -26,7 +26,6 @@ public class PasteController {
             @RequestBody CreatePasteRequest req,
             HttpServletRequest request) {
 
-        // Validation
         if (req.content == null || req.content.trim().isEmpty()) {
             return ResponseEntity.badRequest()
                     .body(Map.of("error", "Invalid content"));
@@ -54,9 +53,11 @@ public class PasteController {
 
         PasteStore.STORE.put(id, paste);
 
-        // ✅ Build URL dynamically (LOCAL + PROD SAFE)
-        String baseUrl = request.getRequestURL().toString()
-                .replace(request.getRequestURI(), "");
+        // ✅ SAFE BASE URL (works locally & on Render)
+        String baseUrl = request.getScheme() + "://" + request.getServerName();
+        if (request.getServerPort() != 80 && request.getServerPort() != 443) {
+            baseUrl += ":" + request.getServerPort();
+        }
 
         return ResponseEntity.ok(
                 new CreatePasteResponse(
